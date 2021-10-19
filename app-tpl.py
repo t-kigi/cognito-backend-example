@@ -67,7 +67,11 @@ def _verify_token(cognito_userid: Optional[str],
         return False
 
     # sub クレームは、認証されたユーザーの固有識別子 (UUID)
-    return payload.get('sub') == cognito_userid
+    # ただし、UserPool の username と一致するとは限らない
+    # そのため sub と cognito:username とも比較する
+    return cognito_userid in [v for v in [
+        payload.get('sub'), payload.get('cognito:username')
+    ] if v]
 
 
 @app.route("/")
@@ -187,7 +191,7 @@ def refresh():
     try:
         # secret_hash で渡す username はログイン時はメールアドレスなどの
         # ログインが可能な情報でよかったが、リフレッシュの時は
-        # Cognito UserPool 上で一意となる Subject である必要がある
+        # Cognito UserPool 上で一意となる Username である必要がある
         res = cognito.admin_initiate_auth(
                 UserPoolId=POOL_ID, ClientId=APP_CLIENT_ID,
                 AuthFlow='REFRESH_TOKEN_AUTH',
